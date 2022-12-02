@@ -35,3 +35,40 @@ e. Reasoning for time complexity:
 The BFS operation will run for O(n+m).
  
 
+4.
+
+a. Verbal Description:
+Start BFS from the start points of object 1 and 2. Add the neighbors in the queue where there is no obstacle for object 1 or object 2 or both and that neighbors combination should not be visited. If we encounter a position for where both of the objects are able to move out of the grid simultaneously , then print the number of moves and exit.
+
+c. Proof of correctness:
+Since BFS is being performed, the first set of coordinate to get out of the grid will provide the minimum number of steps required to get out of the grid. Queue is always enqueued with valid moves for object 1 and object 2 i.e if there is no obstacle, no collision, non visited set of coordinates and coordinates within grid. Program prints "STUCK" if all the possible positions are visited and no scenario produces the result of object 1 and 2 getting out simultaneously
+
+e. Reasoning for time complexity
+In worst case scenario, all the possible combinations of coordinates of object 1 and 2 are visited in the BFS which gives us the time complexity of (ab)^2
+
+
+5.
+
+a. Verbal Description:
+Create strongly connected components and check for edge in consecutive components. If there is no edge between consecutive strongly connected components then print "NO". Lastly, if there is no edge from first component to last component, print "NO". If there exist edge/edges from start to last component, print the lexographically smallest coordinates (u,v).
+
+b. Proof of correctness:
+This covers case where there is only 1 strongly connected component in the graph i.e there will not exist any edge between 1st component and last component, hence answer is "NO". If there are more the 1 strongly connected components checking edge in sequence between consequentive edges ensures the possibility of cyle between strongly connected components which in turn ensures the possiblity of whole strongly connected component by reversing and edge.
+
+e. Reasoning for time complexity
+The algorithm consists of various operations but the dominating part is the DFS operation which is O(m+n) in the worst case.
+
+
+
+2.
+
+a. Verbal Description:
+Perform BFS. BFS ensures the first encounter of each node to be the shortest path to that node. So if there exists multiple paths to a node and if the path length is equal to the minimum number of steps, increase the count of paths to that node.
+
+c. Proof of correctness:
+Since BFS ensures shortest paths for the nodes encountered for the very first time, we can get the minimum number of steps. And then check how many paths to the node exists such that length of the path is equal to the smallest path and increase the count. This will provide us with the count of shortes paths from start to the destination node.
+
+e. Reasoning for time complexity:
+The BFS operation will run for O(n+m).
+ 
+

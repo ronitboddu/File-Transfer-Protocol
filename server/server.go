@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type TCPHeader struct {
@@ -47,22 +48,38 @@ func main() {
 	}
 
 	defer connection.Close()
+	threeWayHS(connection)
+	cmd, fileName := receiveCMD(connection)
+	if cmd == "put" {
+		put(connection, fileName)
+	}
+}
+
+func receiveCMD(c *net.UDPConn) (string, string) {
+	var pkt TCPHeader
+	var network bytes.Buffer
+
+	buffer := make([]byte, 1024)
+	// rand.Seed(int64(i))
+	_, _, err := c.ReadFromUDP(buffer)
+	network.Write(buffer)
+	// fmt.Printf("pkt size = %d", len(buffer))
+	dec := gob.NewDecoder(&network)
+	err = dec.Decode(&pkt)
+	if err != nil {
+		log.Fatal("decode error:", err)
+	}
+	line := string(pkt.Payload)
+	arr := strings.Split(line, " ")
+	cmd, fileName := arr[0], arr[1]
+	return cmd, fileName
+}
+
+func put(c *net.UDPConn, fileName string) {
 	present_ack := 0
 	store_pkt := make(map[int]TCPHeader)
 	for {
-		var pkt TCPHeader
-		var network bytes.Buffer
-
-		buffer := make([]byte, 1024)
-		// rand.Seed(int64(i))
-		_, addr, err := connection.ReadFromUDP(buffer)
-		network.Write(buffer)
-		// fmt.Printf("pkt size = %d", len(buffer))
-		dec := gob.NewDecoder(&network)
-		err = dec.Decode(&pkt)
-		if err != nil {
-			log.Fatal("decode error:", err)
-		}
+		pkt, addr := RecieveExtractPkt(c)
 		fmt.Println(pkt)
 		checksum := calCheckSum(pkt)
 		if checksum != pkt.Checksum {
@@ -71,13 +88,13 @@ func main() {
 			os.Exit(0)
 		}
 		//addToFile(pkt)
-		TCPReciever(pkt, present_ack, store_pkt, connection, addr)
+		TCPReciever(pkt, present_ack, store_pkt, c, addr)
 		const fileSize = 1 * (1 << 9)
 		if len(pkt.Payload) < fileSize {
 			break
 		}
 	}
-	addToFile(store_pkt)
+	addToFile(store_pkt, fileName)
 }
 
 func TCPReciever(pkt TCPHeader, present_Ack int, store_pkt map[int]TCPHeader, c *net.UDPConn, addr *net.UDPAddr) {
@@ -95,6 +112,23 @@ func sendAck(c *net.UDPConn, addr *net.UDPAddr, data []byte) {
 		fmt.Println(err)
 		return
 	}
+}
+
+func RecieveExtractPkt(c *net.UDPConn) (TCPHeader, *net.UDPAddr) {
+	var pkt TCPHeader
+	var network bytes.Buffer
+
+	buffer := make([]byte, 1024)
+	// rand.Seed(int64(i))
+	_, addr, err := c.ReadFromUDP(buffer)
+	network.Write(buffer)
+	// fmt.Printf("pkt size = %d", len(buffer))
+	dec := gob.NewDecoder(&network)
+	err = dec.Decode(&pkt)
+	if err != nil {
+		log.Fatal("decode error:", err)
+	}
+	return pkt, addr
 }
 
 func store(store_pkt map[int]TCPHeader, pkt TCPHeader) {
@@ -121,10 +155,10 @@ func (tcp TCPHeader) String() string {
 
 }
 
-func addToFile(store_pkt map[int]TCPHeader) {
+func addToFile(store_pkt map[int]TCPHeader, fileName string) {
 	for i := 0; i < len(store_pkt); i++ {
 		partBuffer := store_pkt[i].Payload
-		fileName := "NewFile.txt"
+		fileName := fileName[:len(fileName)-1]
 		f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			fmt.Println(err)
@@ -160,4 +194,34 @@ func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
+}
+
+func sendPkt(pkt TCPHeader, c *net.UDPConn, addr *net.UDPAddr) {
+	var network bytes.Buffer
+	enc := gob.NewEncoder(&network)
+	err := enc.Encode(pkt)
+	if err != nil {
+		log.Fatal("encode error:", err)
+	}
+	_, err = c.WriteToUDP(network.Bytes(), addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func threeWayHS(c *net.UDPConn) {
+	pkt, addr := RecieveExtractPkt(c)
+	new_pkt := TCPHeader{}
+	new_pkt.SeqNum = 1
+	new_pkt.AckNum = pkt.SeqNum + 1
+	sendPkt(new_pkt, c, addr)
+	rec_pkt, _ := RecieveExtractPkt(c)
+	if rec_pkt.AckNum != new_pkt.SeqNum+1 {
+		fmt.Println("3 way Handshake failed!!!!")
+		fmt.Printf("RSeq = %d , NSeq = %d", rec_pkt.SeqNum, new_pkt.SeqNum+1)
+		c.Close()
+		os.Exit(0)
+	}
+	fmt.Println("3-Way Handshake successful!!!")
+	fmt.Println("Connection Established!!")
 }
