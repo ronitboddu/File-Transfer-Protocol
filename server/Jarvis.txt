@@ -1,74 +1,132 @@
-4.
+Introduction:
+In Computer Networks, Programmable packet scheduling is a holy grail for enabling packet scheduling by deploying custom scheduling algorithms into a switch without modifying the hardware design. This provides flexibility in network to schedule packets based on the operator’s requirements. In this proposal we are going to discuss the problems with existing packet Scheduling, solution for it and the algorithm to implement the solution.
 
-a. Verbal Description:
-Start BFS from the start points of object 1 and 2. Add the neighbors in the queue where there is no obstacle for object 1 or object 2 or both and that neighbors combination should not be visited. If we encounter a position for where both of the objects are able to move out of the grid simultaneously , then print the number of moves and exit.
+Problem:
+In the past decades, many packet scheduling algorithms have been designed but were not able to make significant impact on the real-world packet scheduling applications in computer networks due to high-cost design and deployment of switch ASICs. Previously popular, Push-In-First-Out (PIFO) is an impressive abstraction for packet scheduling algorithm. The core Idea in PIFO, is to maintain ranks with each packet and maintain sorted queue for packets. However, various recent work forces PIFO to own complex hardware design to function at clock frequency of 1 GHz on shared-memory switches. Also, PIFO fails to impress with scalable network designs. SP-PIFO a better variant of PIFO, manages to overcome the problems of PIFO by mapping large number of ranks into small set of priorities but however, it demands multiple strict-priority queues.
 
-c. Proof of correctness:
-Since BFS is being performed, the first set of coordinate to get out of the grid will provide the minimum number of steps required to get out of the grid. Queue is always enqueued with valid moves for object 1 and object 2 i.e if there is no obstacle, no collision, non visited set of coordinates and coordinates within grid. Program prints "STUCK" if all the possible positions are visited and no scenario produces the result of object 1 and 2 getting out simultaneously
+Solution:
+In this proposal, we suggest an Admission-In-First-Out (AIFO) queue for packet scheduling algorithm. AIFO uses single first-in first-out (FIFO) queue that can run at line rate and are available in almost all the switches. It can not only be integrated in existing hardware, but also eliminates the need of multiple strict-priority queues unlike PIFO.  
 
-e. Reasoning for time complexity
-In worst case scenario, all the possible combinations of coordinates of object 1 and 2 are visited in the BFS which gives us the time complexity of (ab)^2
+Plan for Testing:
+We went through a research paper (DOI: 10.24297/ijct.v14i8.1869) where they used LTE-SIM simulator to analyze performance of Round Robin algorithm and Max Rate algorithm. After Implementing the packet Scheduling Algorithm, we will be using a Simulator to mimic network traffic and analyze the performance of the scheduling algorithm based on some parameters.
 
-
-5.
-
-a. Verbal Description:
-Create strongly connected components and check for edge in consecutive components. If there is no edge between consecutive strongly connected components then print "NO". Lastly, if there is no edge from first component to last component, print "NO". If there exist edge/edges from start to last component, print the lexographically smallest coordinates (u,v).
-
-b. Proof of correctness:
-This covers case where there is only 1 strongly connected component in the graph i.e there will not exist any edge between 1st component and last component, hence answer is "NO". If there are more the 1 strongly connected components checking edge in sequence between consequentive edges ensures the possibility of cyle between strongly connected components which in turn ensures the possiblity of whole strongly connected component by reversing and edge.
-
-e. Reasoning for time complexity
-The algorithm consists of various operations but the dominating part is the DFS operation which is O(m+n) in the worst case.
-
-
-
-2.
-
-a. Verbal Description:
-Perform BFS. BFS ensures the first encounter of each node to be the shortest path to that node. So if there exists multiple paths to a node and if the path length is equal to the minimum number of steps, increase the count of paths to that node.
-
-c. Proof of correctness:
-Since BFS ensures shortest paths for the nodes encountered for the very first time, we can get the minimum number of steps. And then check how many paths to the node exists such that length of the path is equal to the smallest path and increase the count. This will provide us with the count of shortes paths from start to the destination node.
-
-e. Reasoning for time complexity:
-The BFS operation will run for O(n+m).
+Implementation:
+After reading various papers, we would like to focus on OSTIS(Open Semantic Technologies for Intelligent Systems) technology for reviewing the speech assistant technology. OSTIS Systems include semantic model Interpreting platform. Also, it has SC model which includes the knowledge base, task-solver model, and user interface. Following System Architecture can be summarized for a general dialogue scheme.
+•	After receiving the voice message, the speech analysis module extracts the keyword for the message and correlates it with the speech identifiers in the knowledge base.
+•	Classifications takes place based on the knowledge base rules.
+•	Based on the rules, system generates appropriate message and converts it corresponding speech signal.
+Speech Analysis:
+There are various discrete Fourier transformation or determination for the auto-correlation of the signal. The input speech signal is divided into overlapping sets using various factors such as spectral envelope, frequency, type of excitation, etc. Using an algorithm, these parameters are extracted from the input speech signal.
+Knowledge Base:
+ 
+The above figure entails the upper hierarchy of the knowledge base for the OSTIS systems.
+Dialogue Management Area:
+Following rules are used for analysis of speech input.
+•	Segregation rules for the voice message
+•	Protocols for generating appropriate response message
+•	Rules for converting the response message to voice.
+Problem Solver:
+The SC model of the OSTIS System is divided into chucks of smaller system where each system is knowledge processing agent (sc-agents) whose task is to interact by specifying the actions in response to the input passed.
+Following is the agent hierarchy in the SC models:
  
 
-4.
-
-a. Verbal Description:
-Start BFS from the start points of object 1 and 2. Add the neighbors in the queue where there is no obstacle for object 1 or object 2 or both and that neighbors combination should not be visited. If we encounter a position for where both of the objects are able to move out of the grid simultaneously , then print the number of moves and exit.
-
-c. Proof of correctness:
-Since BFS is being performed, the first set of coordinate to get out of the grid will provide the minimum number of steps required to get out of the grid. Queue is always enqueued with valid moves for object 1 and object 2 i.e if there is no obstacle, no collision, non visited set of coordinates and coordinates within grid. Program prints "STUCK" if all the possible positions are visited and no scenario produces the result of object 1 and 2 getting out simultaneously
-
-e. Reasoning for time complexity
-In worst case scenario, all the possible combinations of coordinates of object 1 and 2 are visited in the BFS which gives us the time complexity of (ab)^2
+Reference:
+Title: Intelligent Voice Assistant Based on Open Semantic Technology
+Authors: Zahariev, Vadim and Shunkevich, Daniil and Nikiforov, Sergei and Azarov, Elias
+URL: https://ssrlab.by/wp-content/uploads/2020/06/2020_zahariev-shunkevich-nikiforovlyahor-
+azarov_building-intelligent-speech-assistants-based-on-open-semantic-technology.pdf 
 
 
-5.
+grand_child(P, Q) :- child(P, Z), child(Z, Q), not(P = Q).
 
-a. Verbal Description:
-Create strongly connected components and check for edge in consecutive components. If there is no edge between consecutive strongly connected components then print "NO". Lastly, if there is no edge from first component to last component, print "NO". If there exist edge/edges from start to last component, print the lexographically smallest coordinates (u,v).
+grand_parent(P, Q) :- child(Q, Z), child(Z, P), not(P = Z).
 
-b. Proof of correctness:
-This covers case where there is only 1 strongly connected component in the graph i.e there will not exist any edge between 1st component and last component, hence answer is "NO". If there are more the 1 strongly connected components checking edge in sequence between consequentive edges ensures the possibility of cyle between strongly connected components which in turn ensures the possiblity of whole strongly connected component by reversing and edge.
+ancestor(P, Q) :-  child(Q, P).
+ancestor(P, Q) :-  child(Q, A), ancestor(P, A).
 
-e. Reasoning for time complexity
-The algorithm consists of various operations but the dominating part is the DFS operation which is O(m+n) in the worst case.
+brother(P, Q) :- child(P, Z), child(Q, Z), male(P), not(P = Q).
+
+sister(P, Q) :- child(P, Z), child(Q, Z), female(P), not(P = Q).
+
+daughter(P, Q) :- child(P, Q), female(P), not(P = Q).
+
+son(P, Q) :- child(P, Q), male(P), not(P = Q).
+
+sis_bro(P, Q) :- child(P, Z), child(Q, Z), not(P = Q).
+
+first_cousin(P, Q) :- grand_parent(Z, P), grand_parent(Z, Q), not(P = Q), not(sis_bro(P, Q)).
+
+brother_in_law(P,Q):-male(P), sibling(P,Z), spouse(Q,Z).
+
+sister_in_law(P,Q):-female(P), sibling(P,Z), spouse(Q,Z).
+
+sibling(A, B) :- child(A, C), child(B, C), A\=B.
+
+aunt(P, Q) :- child(Q, Z), sister(P, Z), not(P = Q).
+
+uncle(P, Q) :- child(Q, Z), brother(P, Z), not(P = Q).
 
 
+child(andrew,elizabeth).
+child(andrew,philip).
+child(anne,elizabeth).
+child(anne,philip).
+child(beatrice,andrew).
+child(beatrice,sarah).
+child(charles,elizabeth).
+child(charles,philip).
+child(diana,kQdd).
+child(diana,spencer).
+child(edward,elizabeth).
+child(edward,philip).
+child(elizabeth,george).
+child(elizabeth,mum).
+child(eugenie,andrew).
+child(eugenie,sarah).
+child(harrQ,charles).
+child(harrQ,diana).
+child(james,edward).
+child(james,sophie).
+child(louise,edward).
+child(louise,sophie).
+child(margaret,george).
+child(margaret,mum).
+child(peter,anne).
+child(peter,mark).
+child(william,charles).
+child(william,diana).
+child(zara,anne).
+child(zara,mark).
 
-2.
+female(anne).
+female(beatrice).
+female(diana).
+female(elizabeth).
+female(kQdd).
+female(louise).
+female(margaret).
+female(mum).
+female(sarah).
+female(sophie).
+female(zara).
 
-a. Verbal Description:
-Perform BFS. BFS ensures the first encounter of each node to be the shortest path to that node. So if there exists multiple paths to a node and if the path length is equal to the minimum number of steps, increase the count of paths to that node.
+male(andrew).
+male(charles).
+male(edward).
+male(eugenie).
+male(george).
+male(harrQ).
+male(james).
+male(mark).
+male(peter).
+male(philip).
+male(spencer).
+male(william).
 
-c. Proof of correctness:
-Since BFS ensures shortest paths for the nodes encountered for the very first time, we can get the minimum number of steps. And then check how many paths to the node exists such that length of the path is equal to the smallest path and increase the count. This will provide us with the count of shortes paths from start to the destination node.
-
-e. Reasoning for time complexity:
-The BFS operation will run for O(n+m).
- 
-
+spouse(anne,mark).
+spouse(diana,charles).
+spouse(elizabeth,philip).
+spouse(kQdd,spencer).
+spouse(mum,george).
+spouse(sarah,andrew).
+spouse(sophie,edward).

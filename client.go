@@ -15,61 +15,71 @@ import (
 )
 
 type TCPHeader struct {
-	Source      uint16
-	Destination uint16
-	SeqNum      uint32
-	AckNum      uint32
-	Checksum    uint16 // Kernel will set this if it's 0
-	Payload     []byte
+	SeqNum   int
+	AckNum   int
+	Checksum uint16 // Kernel will set this if it's 0
+	Payload  []byte
 }
 
 func main() {
-
+	var c *net.UDPConn
 	CONNECT := "127.0.0.1:50000"
-	s, err := net.ResolveUDPAddr("udp4", CONNECT)
-	c, err := net.DialUDP("udp4", nil, s)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer c.Close()
-	threeWayHS(c)
-	fmt.Print("myftp>")
-	// var command string
-	// var fileName string
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
-	line = line[:len(line)-1]
-	if err != nil {
-		log.Fatal(err)
-	}
-	arr := strings.Split(line, " ")
-	command := arr[0]
-	fileName := ""
-	if len(arr) > 1 {
-		fileName = arr[1]
-		fileName = fileName[:len(fileName)-1]
-	}
-	sendCMD(c, line)
-	if command == "put" {
-		put(c, fileName)
+
+	for {
+
+		fmt.Print("myftp>")
+		reader := bufio.NewReader(os.Stdin)
+		line, err := reader.ReadString('\n')
+		line = line[:len(line)-1]
+		if err != nil {
+			log.Fatal(err)
+		}
+		arr := strings.Split(line, " ")
+		command := arr[0]
+		fileName := ""
+		if len(arr) > 1 {
+			fileName = arr[1]
+			fileName = fileName[:len(fileName)-1]
+		}
+		if strings.Contains(command, "connect") {
+			s, err := net.ResolveUDPAddr("udp4", CONNECT)
+			c, err = net.DialUDP("udp4", nil, s)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			defer c.Close()
+			threeWayHS(c)
+			continue
+		}
+		sendCMD(c, line)
+		if command == "put" {
+			put(c, fileName)
+		}
+		if command == "get" {
+			get(c, fileName)
+		}
+		if strings.Contains(command, "quit") {
+			c.Close()
+			os.Exit(0)
+		}
+		if strings.Contains(command, "?") {
+			printHelp()
+		}
 	}
 
-	// put(c)
 }
 func sendCMD(c *net.UDPConn, line string) {
 	pkt := createPkt(0, []byte(line))
 	encodeSend(pkt, c)
 }
 
-func createPkt(seq uint32, payload []byte) TCPHeader {
+func createPkt(seq int, payload []byte) TCPHeader {
 	packet := TCPHeader{
-		Source:      0xaa47, // Random ephemeral port
-		Destination: 80,
-		SeqNum:      seq,
-		AckNum:      0,
-		Checksum:    0, // Kernel will set this if it's 0
-		Payload:     payload,
+		SeqNum:   seq,
+		AckNum:   0,
+		Checksum: 0, // Kernel will set this if it's 0
+		Payload:  payload,
 	}
 	return packet
 }
@@ -95,14 +105,10 @@ func TCPSender(pkt_list []TCPHeader, c *net.UDPConn) {
 			if index >= len(pkt_list) {
 				break
 			}
-			// To Drop packets
 			if index == 7 {
-				//fmt.Println("here")
 				index += 1
 				continue
 			}
-			// fmt.Println("Sending Packet:")
-			// fmt.Println(pkt_list[index])
 			ack := sendPkt(pkt_list[index], c)
 			index += 1
 			if _, ok := dupAck[ack]; !ok {
@@ -144,7 +150,7 @@ func ReceiveExtractPkt(c *net.UDPConn) (TCPHeader, *net.UDPAddr) {
 
 func sendPkt(pkt TCPHeader, c *net.UDPConn) int {
 	fmt.Println("Sending Packet")
-	fmt.Println(pkt.Checksum)
+	// fmt.Println(pkt.Checksum)
 	fmt.Println(pkt)
 	var network bytes.Buffer
 	enc := gob.NewEncoder(&network)
@@ -157,17 +163,8 @@ func sendPkt(pkt TCPHeader, c *net.UDPConn) int {
 		fmt.Println(err)
 		return -1
 	}
-	buffer := make([]byte, 1024)
-	n, _, err := c.ReadFromUDP(buffer)
-	if err != nil {
-		fmt.Println(err)
-		return -1
-	}
-	ack, err := strconv.Atoi(string(buffer[0:n]))
-	if err != nil {
-		fmt.Println(err)
-		return -1
-	}
+	rec_pkt, _ := ReceiveExtractPkt(c)
+	ack := rec_pkt.AckNum
 	fmt.Printf("Ack Recieved: %d\n", ack)
 	return ack
 }
@@ -201,19 +198,21 @@ func createChunks(fileName string) []TCPHeader {
 		partSize := int(math.Min(fileChunk, float64(fileSize-int64(i*fileChunk))))
 		partBuffer := make([]byte, partSize)
 		file.Read(partBuffer)
-		pkt := createPkt(uint32(i), partBuffer)
-		calCheckSum(&pkt)
+		pkt := createPkt(int(i), partBuffer)
+		pkt.Checksum = calCheckSum(pkt)
 		pkt_list = append(pkt_list, pkt)
 	}
 	return pkt_list
 }
 
-func calCheckSum(pkt *TCPHeader) {
-	pkt.Checksum += uint16(hash(strconv.Itoa(int(pkt.Source))))
-	pkt.Checksum += uint16(hash(strconv.Itoa(int(pkt.Destination))))
-	pkt.Checksum += uint16(hash(strconv.Itoa(int(pkt.SeqNum))))
-	pkt.Checksum += uint16(hash(strconv.Itoa(int(pkt.AckNum))))
-	pkt.Checksum += uint16(calPayloadHash(pkt.Payload))
+func calCheckSum(pkt TCPHeader) uint16 {
+	checksum := uint16(0)
+	// checksum += uint16(hash(strconv.Itoa(int(pkt.Source))))
+	// checksum += uint16(hash(strconv.Itoa(int(pkt.Destination))))
+	checksum += uint16(hash(strconv.Itoa(int(pkt.SeqNum))))
+	checksum += uint16(hash(strconv.Itoa(int(pkt.AckNum))))
+	checksum += uint16(calPayloadHash(pkt.Payload))
+	return checksum
 }
 
 func calPayloadHash(payload []byte) uint32 {
@@ -249,4 +248,81 @@ func put(c *net.UDPConn, fileName string) {
 	fmt.Println(fileName)
 	packet_list := createChunks(fileName)
 	TCPSender(packet_list, c)
+}
+
+//////////////////////////////////////////////////
+
+func get(c *net.UDPConn, fileName string) {
+	present_ack := 0
+	store_pkt := make(map[int]TCPHeader)
+	for {
+		pkt, addr := ReceiveExtractPkt(c)
+		fmt.Println(pkt)
+		checksum := calCheckSum(pkt)
+		if checksum != pkt.Checksum {
+			fmt.Println("Tampered with packet")
+			fmt.Printf("original checksum = %d, new checksum = %d", pkt.Checksum, checksum)
+			os.Exit(0)
+		}
+		//addToFile(pkt)
+		TCPReciever(pkt, present_ack, store_pkt, c, addr)
+		const fileSize = 1 * (1 << 9)
+		if len(pkt.Payload) < fileSize {
+			break
+		}
+	}
+	addToFile(store_pkt, fileName)
+}
+
+func TCPReciever(pkt TCPHeader, present_Ack int, store_pkt map[int]TCPHeader, c *net.UDPConn, addr *net.UDPAddr) {
+	if int(pkt.SeqNum) == present_Ack {
+		present_Ack += 1
+	}
+	store(store_pkt, pkt)
+	fmt.Println("Sending Ack:" + strconv.Itoa(getAck(store_pkt)))
+	new_pkt := TCPHeader{}
+	new_pkt.AckNum = getAck(store_pkt)
+	encodeSend(new_pkt, c)
+	// sendAck(c, addr)
+}
+
+func store(store_pkt map[int]TCPHeader, pkt TCPHeader) {
+	store_pkt[int(pkt.SeqNum)] = pkt
+}
+
+func addToFile(store_pkt map[int]TCPHeader, fileName string) {
+	for i := 0; i < len(store_pkt); i++ {
+		partBuffer := store_pkt[i].Payload
+		//fileName := fileName[:len(fileName)-1]
+		f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		if _, err := f.Write(partBuffer); err != nil {
+			log.Fatal(err)
+		}
+		if err := f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+}
+
+func getAck(store_pkt map[int]TCPHeader) int {
+	i := 0
+	for {
+		if _, ok := store_pkt[i]; ok {
+			i += 1
+		} else {
+			break
+		}
+	}
+	return i
+}
+
+func printHelp() {
+	str := "Following are the commands:\nconnect\tconnect to remote myftp\nput\tsend file\nget\treceive file\nquit\texit tftp\n?\tprint help information"
+	fmt.Println(str)
+
 }
